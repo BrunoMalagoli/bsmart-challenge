@@ -1,0 +1,1 @@
+ALTER DATABASE bsmart_dev SET TIMEZONE TO 'UTC';
