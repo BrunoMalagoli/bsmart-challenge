@@ -1,4 +1,7 @@
 version: "3.8"
+networks:
+  default:
+    name: bsmart-backend_default
 services:
   db:
     image: postgres:15
@@ -33,6 +36,19 @@ services:
     volumes:
       - ./:/src
     command: ["/usr/local/bin/cmd-app"]
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}?sslmode=disable
+    volumes:
+      - ./internal/migrations:/migrations
+    working_dir: /migrations
+    entrypoint: ["migrate", "-database", "${DATABASE_URL}?sslmode=disable"]
 
 volumes:
   db_data:
