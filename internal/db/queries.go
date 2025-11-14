@@ -44,9 +44,10 @@ func (p *PaginationParams) Validate() {
 }
 
 type FilterParams struct {
-	SortBy    string // Field to sort by
-	SortOrder string // "asc" or "desc"
-	Search    string // Search term
+	SortBy     string // Field to sort by
+	SortOrder  string // "asc" or "desc"
+	Search     string // Search term
+	CategoryID *int   // Filter by category ID (optional)
 }
 
 func (f *FilterParams) Validate() {

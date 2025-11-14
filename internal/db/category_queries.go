@@ -169,18 +169,57 @@ func (db *DB) DeleteCategory(ctx context.Context, id int) error {
 	return nil
 }
 
-// SearchCategories searches categories by name
-func (db *DB) SearchCategories(ctx context.Context, searchTerm string) ([]models.Category, error) {
-	query := `
+// SearchCategories searches categories by name with pagination and sorting
+func (db *DB) SearchCategories(ctx context.Context, searchTerm string, pagination *PaginationParams, filter *FilterParams) ([]models.Category, int, error) {
+	pagination.Validate()
+	filter.Validate()
+
+	// Build WHERE clause
+	var whereClause string
+	var args []interface{}
+
+	if searchTerm != "" {
+		whereClause = "WHERE name ILIKE $1"
+		args = append(args, "%"+searchTerm+"%")
+	}
+
+	// Build ORDER BY clause
+	allowedFields := map[string]string{
+		"name":       "name",
+		"created_at": "created_at",
+	}
+	orderByClause := filter.BuildOrderByClause(allowedFields)
+	if orderByClause == "" {
+		orderByClause = "ORDER BY name ASC" // Default sorting
+	}
+
+	// Count total records
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM categories %s", whereClause)
+	total, err := db.CountRows(ctx, countQuery, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count categories: %w", err)
+	}
+
+	// Query categories with pagination
+	argCount := len(args)
+	argCount++
+	limitArg := argCount
+	argCount++
+	offsetArg := argCount
+
+	query := fmt.Sprintf(`
 		SELECT id, name, description, created_at, updated_at
 		FROM categories
-		WHERE name ILIKE $1 
-		ORDER BY name
-	`
+		%s
+		%s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, orderByClause, limitArg, offsetArg)
 
-	rows, err := db.Query(ctx, query, "%"+searchTerm+"%")
+	args = append(args, pagination.Limit, pagination.Offset())
+
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search categories: %w", err)
+		return nil, 0, fmt.Errorf("failed to search categories: %w", err)
 	}
 
 	categories, err := ScanRows(rows, func(row pgx.Row) (models.Category, error) {
@@ -190,8 +229,8 @@ func (db *DB) SearchCategories(ctx context.Context, searchTerm string) ([]models
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan categories: %w", err)
+		return nil, 0, fmt.Errorf("failed to scan categories: %w", err)
 	}
 
-	return categories, nil
+	return categories, total, nil
 }

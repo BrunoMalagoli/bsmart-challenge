@@ -24,4 +24,7 @@ type CategoryUpdateRequest struct {
 type CategoryListResponse struct {
 	Categories []Category `json:"categories"`
 	Total      int        `json:"total"`
+	Page       int        `json:"page,omitempty"`
+	Limit      int        `json:"limit,omitempty"`
+	TotalPages int        `json:"total_pages,omitempty"`
 }

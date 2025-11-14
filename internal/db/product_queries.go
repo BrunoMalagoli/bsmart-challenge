@@ -94,31 +94,45 @@ func (db *DB) ListProducts(ctx context.Context, pagination *PaginationParams, fi
 	pagination.Validate()
 	filter.Validate()
 
-	// Build WHERE clause for search
+	// Build WHERE clause for search and category filter
 	var whereClause string
+	var fromClause string
 	var args []interface{}
 	argCount := 0
 
+	if filter.CategoryID != nil {
+		fromClause = "FROM products p INNER JOIN product_category pc ON p.id = pc.product_id"
+		argCount++
+		whereClause = fmt.Sprintf("WHERE pc.category_id = $%d", argCount)
+		args = append(args, *filter.CategoryID)
+	} else {
+		fromClause = "FROM products p"
+	}
+
 	if filter.Search != "" {
 		argCount++
-		whereClause = fmt.Sprintf("WHERE to_tsvector('simple', name) @@ plainto_tsquery('simple', $%d)", argCount)
+		if whereClause != "" {
+			whereClause += fmt.Sprintf(" AND to_tsvector('simple', p.name) @@ plainto_tsquery('simple', $%d)", argCount)
+		} else {
+			whereClause = fmt.Sprintf("WHERE to_tsvector('simple', p.name) @@ plainto_tsquery('simple', $%d)", argCount)
+		}
 		args = append(args, filter.Search)
 	}
 
 	// Build ORDER BY clause
 	allowedFields := map[string]string{
-		"name":       "name",
-		"price":      "price",
-		"stock":      "stock",
-		"created_at": "created_at",
+		"name":       "p.name",
+		"price":      "p.price",
+		"stock":      "p.stock",
+		"created_at": "p.created_at",
 	}
 	orderByClause := filter.BuildOrderByClause(allowedFields)
 	if orderByClause == "" {
-		orderByClause = "ORDER BY created_at DESC" // Default sorting
+		orderByClause = "ORDER BY p.created_at DESC" // Default sorting
 	}
 
 	// Count total records
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(DISTINCT p.id) %s %s", fromClause, whereClause)
 	total, err := db.CountRows(ctx, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count products: %w", err)
@@ -131,12 +145,12 @@ func (db *DB) ListProducts(ctx context.Context, pagination *PaginationParams, fi
 	offsetArg := argCount
 
 	query := fmt.Sprintf(`
-		SELECT id, name, description, price, stock, created_at, updated_at
-		FROM products
+		SELECT DISTINCT p.id, p.name, p.description, p.price, p.stock, p.created_at, p.updated_at
+		%s
 		%s
 		%s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderByClause, limitArg, offsetArg)
+	`, fromClause, whereClause, orderByClause, limitArg, offsetArg)
 
 	args = append(args, pagination.Limit, pagination.Offset())
 
