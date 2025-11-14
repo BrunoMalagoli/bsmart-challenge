@@ -8,7 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Register handles user registration
+// Register godoc
+// @Summary      Registrar nuevo usuario
+// @Description  Crea una nueva cuenta de usuario con rol "client" por defecto. El email debe ser único en el sistema.
+// @Tags         autenticación
+// @Accept       json
+// @Produce      json
+// @Param        request  body      models.UserRegisterRequest  true  "Datos de registro"
+// @Success      201  {object}  models.ApiResponse{data=models.UserLoginResponse}  "Usuario creado exitosamente"
+// @Failure      400  {object}  models.ApiResponse{error=models.ApiError}  "Datos de entrada inválidos"
+// @Failure      409  {object}  models.ApiResponse{error=models.ApiError}  "Email ya registrado"
+// @Failure      500  {object}  models.ApiResponse{error=models.ApiError}  "Error interno del servidor"
+// @Router       /auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req models.UserRegisterRequest
 
@@ -79,7 +90,18 @@ func (h *Handler) Register(c *gin.Context) {
 	models.RespondSuccess(c, http.StatusCreated, response)
 }
 
-// Login handles user login
+// Login godoc
+// @Summary      Iniciar sesión
+// @Description  Autentica un usuario con email y contraseña, retorna un token JWT válido por 24 horas
+// @Tags         autenticación
+// @Accept       json
+// @Produce      json
+// @Param        request  body      models.UserLoginRequest  true  "Credenciales de login"
+// @Success      200  {object}  models.ApiResponse{data=models.UserLoginResponse}  "Login exitoso, token JWT generado"
+// @Failure      400  {object}  models.ApiResponse{error=models.ApiError}  "Datos de entrada inválidos"
+// @Failure      401  {object}  models.ApiResponse{error=models.ApiError}  "Credenciales inválidas"
+// @Failure      500  {object}  models.ApiResponse{error=models.ApiError}  "Error interno del servidor"
+// @Router       /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req models.UserLoginRequest
 

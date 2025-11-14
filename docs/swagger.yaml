@@ -1,0 +1,1191 @@
+basePath: /api
+definitions:
+  models.ApiError:
+    properties:
+      code:
+        type: string
+      details:
+        type: string
+      message:
+        type: string
+    type: object
+  models.ApiResponse:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/models.ApiError'
+      success:
+        type: boolean
+    type: object
+  models.Category:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - name
+    type: object
+  models.CategoryCreateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  models.CategoryListResponse:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/models.Category'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  models.CategoryUpdateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.Product:
+    properties:
+      categories:
+        description: Joined category data
+        items:
+          $ref: '#/definitions/models.Category'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        minimum: 0
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+      updated_at:
+        type: string
+    required:
+    - name
+    - price
+    - stock
+    type: object
+  models.ProductCreateRequest:
+    properties:
+      category_ids:
+        description: At least one category
+        items:
+          type: integer
+        minItems: 1
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        minimum: 0
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+    required:
+    - category_ids
+    - name
+    - price
+    - stock
+    type: object
+  models.ProductHistory:
+    properties:
+      changed_at:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      product_id:
+        type: integer
+      stock:
+        type: integer
+    type: object
+  models.ProductHistoryResponse:
+    properties:
+      history:
+        items:
+          $ref: '#/definitions/models.ProductHistory'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.ProductListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      products:
+        items:
+          $ref: '#/definitions/models.Product'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  models.ProductUpdateRequest:
+    properties:
+      category_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        minimum: 0
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+    type: object
+  models.Role:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  models.UserLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.UserLoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/models.UserResponse'
+    type: object
+  models.UserRegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      role:
+        $ref: '#/definitions/models.Role'
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: bruno.malagoli@example.com
+    name: Bsmart API Support
+  description: RESTful API con soporte de WebSocket en tiempo real para gestión de
+    productos y categorías. Sistema completo con autenticación JWT, control de acceso
+    basado en roles, búsqueda full-text y seguimiento automático de historial de productos.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Bsmart Backend API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica un usuario con email y contraseña, retorna un token JWT
+        válido por 24 horas
+      parameters:
+      - description: Credenciales de login
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login exitoso, token JWT generado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserLoginResponse'
+              type: object
+        "400":
+          description: Datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: Credenciales inválidas
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      summary: Iniciar sesión
+      tags:
+      - autenticación
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Crea una nueva cuenta de usuario con rol "client" por defecto.
+        El email debe ser único en el sistema.
+      parameters:
+      - description: Datos de registro
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Usuario creado exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserLoginResponse'
+              type: object
+        "400":
+          description: Datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "409":
+          description: Email ya registrado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      summary: Registrar nuevo usuario
+      tags:
+      - autenticación
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene la lista completa de categorías con búsqueda opcional por
+        nombre
+      parameters:
+      - description: Término de búsqueda en nombre de categoría
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de categorías
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryListResponse'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Listar categorías
+      tags:
+      - categorías
+    post:
+      consumes:
+      - application/json
+      description: Crea una nueva categoría en el sistema. Requiere rol de administrador.
+        Emite evento WebSocket 'category:created'.
+      parameters:
+      - description: Datos de la categoría
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CategoryCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Categoría creada exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Category'
+              type: object
+        "400":
+          description: Datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Crear nueva categoría
+      tags:
+      - categorías
+  /categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina una categoría del sistema. Requiere rol de administrador.
+        Emite evento WebSocket 'category:deleted'.
+      parameters:
+      - description: ID de la categoría
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categoría eliminada exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: ID inválido
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Categoría no encontrada
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Eliminar categoría
+      tags:
+      - categorías
+    get:
+      consumes:
+      - application/json
+      description: Obtiene la información completa de una categoría específica
+      parameters:
+      - description: ID de la categoría
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalle de la categoría
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Category'
+              type: object
+        "400":
+          description: ID inválido
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Categoría no encontrada
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Obtener detalle de categoría
+      tags:
+      - categorías
+    put:
+      consumes:
+      - application/json
+      description: Actualiza una categoría existente. Requiere rol de administrador.
+        Los campos no enviados no se modifican. Emite evento WebSocket 'category:updated'.
+      parameters:
+      - description: ID de la categoría
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Datos a actualizar (campos opcionales)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CategoryUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categoría actualizada exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Category'
+              type: object
+        "400":
+          description: ID inválido o datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Categoría no encontrada
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Actualizar categoría
+      tags:
+      - categorías
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene una lista paginada de productos con opciones de filtrado,
+        ordenamiento y búsqueda full-text
+      parameters:
+      - default: 1
+        description: Número de página
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Productos por página (máximo 100)
+        in: query
+        name: limit
+        type: integer
+      - default: created_at
+        description: Campo para ordenar
+        enum:
+        - name
+        - price
+        - stock
+        - created_at
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Dirección de ordenamiento
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Término de búsqueda full-text en nombres de productos
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de productos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductListResponse'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Listar productos con paginación
+      tags:
+      - productos
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo producto en el sistema. Requiere rol de administrador.
+        Emite evento WebSocket 'product:created'.
+      parameters:
+      - description: Datos del producto
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Producto creado exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Crear nuevo producto
+      tags:
+      - productos
+  /products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un producto del sistema. Requiere rol de administrador.
+        Emite evento WebSocket 'product:deleted'.
+      parameters:
+      - description: ID del producto
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Producto eliminado exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: ID inválido
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Producto no encontrado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Eliminar producto
+      tags:
+      - productos
+    get:
+      consumes:
+      - application/json
+      description: Obtiene la información completa de un producto específico incluyendo
+        sus categorías
+      parameters:
+      - description: ID del producto
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalle del producto
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: ID inválido
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Producto no encontrado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Obtener detalle de producto
+      tags:
+      - productos
+    put:
+      consumes:
+      - application/json
+      description: Actualiza un producto existente. Requiere rol de administrador.
+        Los campos no enviados no se modifican. Emite evento WebSocket 'product:updated'.
+      parameters:
+      - description: ID del producto
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Datos a actualizar (campos opcionales)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Producto actualizado exitosamente
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: ID inválido o datos de entrada inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "403":
+          description: Requiere rol de administrador
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "404":
+          description: Producto no encontrado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Actualizar producto
+      tags:
+      - productos
+  /products/{id}/history:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el historial de cambios de precio y stock de un producto.
+        Opcionalmente filtra por rango de fechas (formato RFC3339).
+      parameters:
+      - description: ID del producto
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Fecha de inicio (RFC3339: 2024-01-01T00:00:00Z)'
+        in: query
+        name: start
+        type: string
+      - description: 'Fecha de fin (RFC3339: 2024-12-31T23:59:59Z)'
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Historial del producto
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductHistoryResponse'
+              type: object
+        "400":
+          description: ID inválido o formato de fecha incorrecto
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Obtener historial de producto
+      tags:
+      - productos
+  /search:
+    get:
+      consumes:
+      - application/json
+      description: Busca productos o categorías según el parámetro 'type'. Soporta
+        paginación, ordenamiento y filtros. Para productos, permite filtrar por category_id.
+      parameters:
+      - default: product
+        description: Tipo de búsqueda
+        enum:
+        - product
+        - category
+        in: query
+        name: type
+        type: string
+      - description: Término de búsqueda
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: Número de página
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items por página
+        in: query
+        name: limit
+        type: integer
+      - default: name
+        description: Campo para ordenar (name, price, stock, created_at para products)
+        in: query
+        name: sort_by
+        type: string
+      - default: asc
+        description: Dirección de ordenamiento
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Filtrar productos por ID de categoría (solo para type=product)
+        in: query
+        name: category_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Resultados de búsqueda (ProductListResponse o CategoryListResponse
+            según type)
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductListResponse'
+              type: object
+        "400":
+          description: Parámetros inválidos
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "401":
+          description: No autenticado
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.ApiResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.ApiError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Búsqueda universal
+      tags:
+      - búsqueda
+securityDefinitions:
+  BearerAuth:
+    description: 'Autenticación JWT. Formato: "Bearer {token}". Obtén un token desde
+      /api/auth/login o /api/auth/register'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

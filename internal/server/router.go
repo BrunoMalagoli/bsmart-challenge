@@ -12,6 +12,11 @@ import (
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
+	// Swagger imports
+	_ "github.com/BrunoMalagoli/bsmart-challenge/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var upgrader = websocket.Upgrader{
@@ -39,6 +44,9 @@ func SetupRouter(database *db.DB, jwtService *auth.JWTService, hub *websockets.H
 	// API routes
 	api := r.Group("/api")
 	{
+		// Swagger documentation route - public access
+		api.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 		// Auth routes - no authentication required
 		authRoutes := api.Group("/auth")
 		{

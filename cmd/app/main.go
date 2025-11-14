@@ -11,6 +11,25 @@ import (
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 )
 
+// @title           Bsmart Backend API
+// @version         1.0
+// @description     RESTful API con soporte de WebSocket en tiempo real para gestión de productos y categorías. Sistema completo con autenticación JWT, control de acceso basado en roles, búsqueda full-text y seguimiento automático de historial de productos.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   Bsmart API Support
+// @contact.email  bruno.malagoli@example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Autenticación JWT. Formato: "Bearer {token}". Obtén un token desde /api/auth/login o /api/auth/register
+
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
