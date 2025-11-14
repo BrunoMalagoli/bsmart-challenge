@@ -7,6 +7,7 @@ import (
 
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/db"
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/models"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 	"github.com/gin-gonic/gin"
 )
 
@@ -83,6 +84,9 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		return
 	}
 
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventProductCreated, product)
+
 	models.RespondSuccess(c, http.StatusCreated, product)
 }
 
@@ -113,6 +117,9 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventProductUpdated, product)
+
 	models.RespondSuccess(c, http.StatusOK, product)
 }
 
@@ -133,6 +140,9 @@ func (h *Handler) DeleteProduct(c *gin.Context) {
 		models.RespondError(c, http.StatusInternalServerError, "DELETE_ERROR", "Failed to delete product")
 		return
 	}
+
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventProductDeleted, gin.H{"id": id})
 
 	models.RespondSuccess(c, http.StatusOK, gin.H{"message": "Product deleted successfully"})
 }

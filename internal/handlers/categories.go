@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/models"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 	"github.com/gin-gonic/gin"
 )
 
@@ -57,6 +58,9 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 		return
 	}
 
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventCategoryCreated, category)
+
 	models.RespondSuccess(c, http.StatusCreated, category)
 }
 
@@ -85,6 +89,9 @@ func (h *Handler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventCategoryUpdated, category)
+
 	models.RespondSuccess(c, http.StatusOK, category)
 }
 
@@ -104,6 +111,9 @@ func (h *Handler) DeleteCategory(c *gin.Context) {
 		models.RespondError(c, http.StatusInternalServerError, "DELETE_ERROR", "Failed to delete category")
 		return
 	}
+
+	// Broadcast WebSocket event
+	websockets.BroadcastEvent(h.Hub, websockets.EventCategoryDeleted, gin.H{"id": id})
 
 	models.RespondSuccess(c, http.StatusOK, gin.H{"message": "Category deleted successfully"})
 }
