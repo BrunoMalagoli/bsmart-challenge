@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/auth"
@@ -8,18 +9,28 @@ import (
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/handlers"
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/middleware"
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/models"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
-func SetupRouter(database *db.DB, jwtService *auth.JWTService) *gin.Engine {
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func SetupRouter(database *db.DB, jwtService *auth.JWTService, hub *websockets.Hub) *gin.Engine {
 	// Create router
 	r := gin.Default()
 
-	// Apply global middleware
+	// global middleware
 	r.Use(middleware.Logger())
 	r.Use(middleware.ErrorHandler())
 
-	h := handlers.NewHandler(database, jwtService)
+	h := handlers.NewHandler(database, jwtService, hub)
 
 	r.GET("/health", func(c *gin.Context) {
 		models.RespondSuccess(c, http.StatusOK, gin.H{"status": "ok"})
@@ -28,22 +39,6 @@ func SetupRouter(database *db.DB, jwtService *auth.JWTService) *gin.Engine {
 	// API routes
 	api := r.Group("/api")
 	{
-		// Public routes - no authentication required
-		public := api.Group("")
-		{
-			// Products - read only
-			public.GET("/products", h.ListProducts)
-			public.GET("/products/:id", h.GetProduct)
-			public.GET("/products/:id/history", h.GetProductHistory)
-
-			// Categories - read only
-			public.GET("/categories", h.ListCategories)
-			public.GET("/categories/:id", h.GetCategory)
-
-			// Search
-			public.GET("/search", h.Search)
-		}
-
 		// Auth routes - no authentication required
 		authRoutes := api.Group("/auth")
 		{
@@ -55,6 +50,16 @@ func SetupRouter(database *db.DB, jwtService *auth.JWTService) *gin.Engine {
 		protected := api.Group("")
 		protected.Use(middleware.RequireAuth(jwtService))
 		{
+
+			protected.GET("/products", h.ListProducts)
+			protected.GET("/products/:id", h.GetProduct)
+			protected.GET("/products/:id/history", h.GetProductHistory)
+
+			protected.GET("/categories", h.ListCategories)
+			protected.GET("/categories/:id", h.GetCategory)
+
+			protected.GET("/search", h.Search)
+
 			// Admin-only routes
 			admin := protected.Group("")
 			admin.Use(middleware.RequireRole("admin"))
@@ -69,6 +74,21 @@ func SetupRouter(database *db.DB, jwtService *auth.JWTService) *gin.Engine {
 			}
 		}
 	}
+
+	// WebSocket endpoint
+	r.GET("/ws", func(c *gin.Context) {
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("Failed to upgrade to websocket: %v", err)
+			return
+		}
+
+		client := websockets.NewClient(hub, conn)
+		hub.Register(client)
+
+		go client.WritePump()
+		go client.ReadPump()
+	})
 
 	return r
 }
