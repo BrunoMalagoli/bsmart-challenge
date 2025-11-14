@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/auth"
 	"github.com/BrunoMalagoli/bsmart-challenge/internal/config"
-	"github.com/BrunoMalagoli/bsmart-challenge/internal/middleware"
-	"github.com/BrunoMalagoli/bsmart-challenge/internal/models"
-	"github.com/gin-gonic/gin"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/db"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/server"
+	"github.com/BrunoMalagoli/bsmart-challenge/internal/websockets"
 )
 
 func main() {
@@ -19,37 +19,31 @@ func main() {
 	}
 
 	// Initialize database connection pool
-	db, err := config.NewDatabasePool(cfg.DatabaseURL)
+	pool, err := config.NewDatabasePool(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer pool.Close()
 
 	fmt.Println("Connected to PostgreSQL successfully")
 
-	// Initialize Gin router
-	r := gin.Default()
+	// Wrap pool in DB struct
+	database := db.NewDB(pool)
 
-	// Apply global middleware
-	r.Use(middleware.Logger())
-	r.Use(middleware.ErrorHandler())
+	// Initialize JWT service
+	jwtService := auth.NewJWTService(cfg.JWTSecret)
 
-	// Health check endpoints
-	r.GET("/health", func(c *gin.Context) {
-		models.RespondSuccess(c, http.StatusOK, gin.H{"status": "ok"})
-	})
+	// Initialize WebSocket hub
+	hub := websockets.NewHub()
+	go hub.Run() // Start hub in a goroutine
 
-	r.GET("/api/ready", func(c *gin.Context) {
-		models.RespondSuccess(c, http.StatusOK, gin.H{"ready": true})
-	})
-
-	// TODO: Setup routes in internal/server/router.go
-	// Future routes will be organized in internal/handlers
+	// Setup router with all routes and middleware
+	router := server.SetupRouter(database, jwtService, hub)
 
 	// Start server
 	addr := ":" + cfg.Port
 	fmt.Printf("Server starting on %s\n", addr)
-	if err := r.Run(addr); err != nil {
+	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
