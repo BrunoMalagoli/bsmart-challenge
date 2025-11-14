@@ -15,14 +15,6 @@ services:
     ports:
       - "5432:5432"
 
-  redis:
-    image: redis:7
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
   app:
     build: .
     restart: "no"
@@ -49,7 +41,15 @@ services:
       - ./internal/migrations:/migrations
     working_dir: /migrations
     entrypoint: ["migrate", "-database", "${DATABASE_URL}?sslmode=disable"]
+  seeder:
+      build: .
+      entrypoint: ["/usr/local/bin/cmd-seed"]
+      env_file:
+        - .env
+      depends_on:
+        - db
+      networks:
+        - default
 
 volumes:
   db_data:
-  redis_data:
