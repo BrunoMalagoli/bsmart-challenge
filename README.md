@@ -8,6 +8,8 @@ API RESTful lista para producción con soporte de WebSocket en tiempo real para 
 
 **URL del despliegue**: https://bsmart-challenge.onrender.com/
 
+> **⚠️ Nota importante**: La primera request puede tardar entre 30-60 segundos en responder, ya que el servidor entra en modo sleep después de 15 minutos de inactividad. Las siguientes peticiones funcionarán con normalidad.
+
 ---
 
 ## Documentación Swagger
@@ -37,6 +39,7 @@ Desde Swagger UI podrás explorar todos los endpoints, ver ejemplos de requests/
 - [Arquitectura](#arquitectura)
 - [Instalación Local](#instalación-local)
 - [Características Clave de la Base de Datos](#características-clave-de-la-base-de-datos)
+- [WebSockets - Actualizaciones en Tiempo Real](#websockets---actualizaciones-en-tiempo-real)
 - [Gestión de Base de Datos](#gestión-de-base-de-datos)
 - [Docker](#docker)
 - [Consideraciones de Performance](#-consideraciones-de-performance)
@@ -404,6 +407,83 @@ curl http://localhost:8080/health
 - Email debe ser único
 - Nombres de categorías deben ser únicos
 - Claves foráneas aseguran integridad referencial
+
+---
+
+## WebSockets
+
+La aplicación implementa WebSockets para notificar a los clientes conectados sobre cambios en productos y categorías en tiempo real.
+
+### Implementación
+
+El sistema utiliza el **patrón Hub-Client**:
+
+- **Hub**: Gestor centralizado que mantiene todas las conexiones WebSocket activas
+- **Client**: Cada conexión WebSocket se maneja en goroutines independientes para lectura/escritura
+- **Broadcasting**: Cuando ocurre un cambio (crear/actualizar/eliminar), el evento se emite automáticamente a todos los clientes conectados
+
+### Eventos Disponibles
+
+Los siguientes eventos se emiten automáticamente cuando se realizan operaciones desde la API:
+
+**Productos:**
+
+- `product:created` - Se creó un nuevo producto
+- `product:updated` - Se actualizó un producto (precio, stock, nombre, etc.)
+- `product:deleted` - Se eliminó un producto
+
+**Categorías:**
+
+- `category:created` - Se creó una nueva categoría
+- `category:updated` - Se actualizó una categoría
+- `category:deleted` - Se eliminó una categoría
+
+### Formato de Mensaje
+
+Todos los eventos se envían en formato JSON:
+
+```json
+{
+  "event": "product:created",
+  "data": {
+    "id": 1,
+    "name": "Laptop HP",
+    "price": 899.99,
+    "stock": 10,
+    ...
+  }
+}
+```
+
+### Probar WebSockets con wscat
+
+**wscat** es una herramienta de línea de comandos para probar conexiones WebSocket.
+
+**Instalación:**
+
+```bash
+npm install -g wscat
+```
+
+**Conectarse en Local:**
+
+```bash
+wscat -c ws://localhost:8080/ws
+```
+
+**Conectarse en Producción:**
+
+```bash
+wscat -c wss://bsmart-challenge.onrender.com/ws
+```
+
+**Una vez conectado**, verás el mensaje `Connected`. Deja la conexión abierta y realiza operaciones en la API (crear/actualizar/eliminar productos o categorías). Los eventos llegarán automáticamente a tu terminal:
+
+```
+Connected (press CTRL+C to quit)
+< {"event":"product:created","data":{"id":21,"name":"Nuevo Producto","price":50,"stock":100,...}}
+< {"event":"product:updated","data":{"id":1,"name":"Laptop HP","price":799.99,"stock":5,...}}
+```
 
 ---
 
