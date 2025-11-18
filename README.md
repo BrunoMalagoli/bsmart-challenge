@@ -1,6 +1,6 @@
 # Bsmart Backend Challenge - API de Gestión de Productos
 
-API RESTful lista para producción con soporte de WebSocket en tiempo real para gestión de productos y categorías. Construida con Go, PostgreSQL y Redis.
+API RESTful lista para producción con soporte de WebSocket en tiempo real para gestión de productos y categorías. Construida con Go y PostgreSQL.
 
 ---
 
